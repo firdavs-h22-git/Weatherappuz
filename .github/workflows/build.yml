@@ -1,0 +1,45 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: project.zip ni ochish
+        run: |
+          if [ -f project.zip ]; then
+            mkdir -p src_proj
+            unzip -q -o project.zip -d src_proj
+            SETTINGS=$(find src_proj -maxdepth 3 -name 'settings.gradle*' | head -n1)
+            if [ -z "$SETTINGS" ]; then
+              echo "project.zip ichida settings.gradle.kts topilmadi"
+              exit 1
+            fi
+            echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+          else
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: APK yig'ish
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: APK ni yuklash
+        uses: actions/upload-artifact@v4
+        with:
+          name: obhavo-apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
